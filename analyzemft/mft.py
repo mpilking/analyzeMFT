@@ -246,7 +246,7 @@ def mft_to_csv(record, ret_header, options):
                       'FN Info Entry date', 'Standard Information', 'Attribute List', 'Filename',
                       'Object ID', 'Volume Name', 'Volume Info', 'Data', 'Index Root',
                       'Index Allocation', 'Bitmap', 'Reparse Point', 'EA Information', 'EA',
-                      'Property Set', 'Logged Utility Stream', 'Log/Notes', 'STF FN Shift', 'uSec Zero', 'ADS']
+                      'Property Set', 'Logged Utility Stream', 'Log/Notes', 'STF FN Shift', 'uSec Zero', 'ADS', 'Possible Copy']
         return csv_string
 
     if 'baad' in record:
@@ -375,6 +375,11 @@ def mft_to_csv(record, ret_header, options):
         csv_string.append('N')
 
     if record['ads'] > 0:
+        csv_string.append('Y')
+    else:
+        csv_string.append('N')
+
+    if 'possible-copy' in record:
         csv_string.append('Y')
     else:
         csv_string.append('N')
@@ -786,3 +791,13 @@ def anomaly_detect(record):
         if record['fn', 0]['crtime'].dt != 0:
             if record['fn', 0]['crtime'].dt.microsecond == 0:
                 record['usec-zero'] = True
+                
+        # Check for STD create times that are after the STD modify times.  The following documentation from
+        # Microsoft describes their handling of file copies, which results in a creation time after modification.
+        # https://support.microsoft.com/en-us/help/299648/description-of-ntfs-date-and-time-stamps-for-files-and-folders  
+        try:
+            if record['si']['crtime'].dt > record['si']['mtime'].dt:
+                record['possible-copy'] = True
+        except:
+            pass
+
